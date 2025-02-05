@@ -2,39 +2,38 @@ package webhookexporter
 
 import (
 	"context"
-	"fmt"
-	"io/ioutil"
-	"log"
+	"log/slog"
 	"os"
 	"testing"
 
-	"github.com/thomaspoignant/go-feature-flag/exporter"
-
 	"github.com/stretchr/testify/assert"
-
+	"github.com/thomaspoignant/go-feature-flag/exporter"
 	"github.com/thomaspoignant/go-feature-flag/testutils"
+	"github.com/thomaspoignant/go-feature-flag/utils/fflog"
 )
 
 func TestWebhook_IsBulk(t *testing.T) {
 	exporter := Exporter{}
-	assert.True(t, exporter.IsBulk(), "Exporter exporter is not a bulk exporter")
+	assert.True(t, exporter.IsBulk(), "DeprecatedExporter is a bulk exporter")
 }
 
 func TestWebhook_Export(t *testing.T) {
-	logger := log.New(os.Stdout, "", 0)
+	logger := &fflog.FFLogger{LeveledLogger: slog.Default()}
 	type fields struct {
 		EndpointURL string
 		Secret      string
 		Meta        map[string]string
 		httpClient  testutils.HTTPClientMock
+		Headers     map[string][]string
 	}
 	type args struct {
-		logger        *log.Logger
+		logger        *fflog.FFLogger
 		featureEvents []exporter.FeatureEvent
 	}
 	type expected struct {
 		bodyFilePath string
 		signHeader   string
+		headers      map[string][]string
 	}
 	tests := []struct {
 		name     string
@@ -62,11 +61,11 @@ func TestWebhook_Export(t *testing.T) {
 				featureEvents: []exporter.FeatureEvent{
 					{
 						Kind: "feature", ContextKind: "anonymousUser", UserKey: "ABCD", CreationDate: 1617970547, Key: "random-key",
-						Variation: "Default", Value: "YO", Default: false,
+						Variation: "Default", Value: "YO", Default: false, Source: "SERVER",
 					},
 					{
 						Kind: "feature", ContextKind: "anonymousUser", UserKey: "EFGH", CreationDate: 1617970701, Key: "random-key",
-						Variation: "Default", Value: "YO2", Default: false, Version: 127,
+						Variation: "Default", Value: "YO2", Default: false, Version: "127", Source: "SERVER",
 					},
 				},
 			},
@@ -89,17 +88,17 @@ func TestWebhook_Export(t *testing.T) {
 				featureEvents: []exporter.FeatureEvent{
 					{
 						Kind: "feature", ContextKind: "anonymousUser", UserKey: "ABCD", CreationDate: 1617970547, Key: "random-key",
-						Variation: "Default", Value: "YO", Default: false,
+						Variation: "Default", Value: "YO", Default: false, Source: "SERVER",
 					},
 					{
 						Kind: "feature", ContextKind: "anonymousUser", UserKey: "EFGH", CreationDate: 1617970701, Key: "random-key",
-						Variation: "Default", Value: "YO2", Default: false, Version: 127,
+						Variation: "Default", Value: "YO2", Default: false, Version: "127", Source: "SERVER",
 					},
 				},
 			},
 			expected: expected{
 				bodyFilePath: "./testdata/valid_with_signature.json",
-				signHeader:   "sha256=1ac12dcfbc2f5734a949b301c251a542384735c5552d8570e25bf5a4e7c21a32",
+				signHeader:   "sha256=f1f9766836d4e513035986c035ee9f091b895709be47a802b5840467007e1ec0",
 			},
 			wantErr: false,
 		},
@@ -116,11 +115,11 @@ func TestWebhook_Export(t *testing.T) {
 				featureEvents: []exporter.FeatureEvent{
 					{
 						Kind: "feature", ContextKind: "anonymousUser", UserKey: "ABCD", CreationDate: 1617970547, Key: "random-key",
-						Variation: "Default", Value: "YO", Default: false,
+						Variation: "Default", Value: "YO", Default: false, Source: "SERVER",
 					},
 					{
 						Kind: "feature", ContextKind: "anonymousUser", UserKey: "EFGH", CreationDate: 1617970701, Key: "random-key",
-						Variation: "Default", Value: "YO2", Default: false,
+						Variation: "Default", Value: "YO2", Default: false, Source: "SERVER",
 					},
 				},
 			},
@@ -139,15 +138,45 @@ func TestWebhook_Export(t *testing.T) {
 				featureEvents: []exporter.FeatureEvent{
 					{
 						Kind: "feature", ContextKind: "anonymousUser", UserKey: "ABCD", CreationDate: 1617970547, Key: "random-key",
-						Variation: "Default", Value: "YO", Default: false,
+						Variation: "Default", Value: "YO", Default: false, Source: "SERVER",
 					},
 					{
 						Kind: "feature", ContextKind: "anonymousUser", UserKey: "EFGH", CreationDate: 1617970701, Key: "random-key",
-						Variation: "Default", Value: "YO2", Default: false,
+						Variation: "Default", Value: "YO2", Default: false, Source: "SERVER",
 					},
 				},
 			},
 			wantErr: true,
+		},
+		{
+			name: "expect exporter to send custom headers",
+			fields: fields{
+				EndpointURL: "http://valid.com/webhook",
+				httpClient:  testutils.HTTPClientMock{StatusCode: 200, ForceError: false},
+				Meta:        map[string]string{"hostname": "hostname"},
+				Headers:     map[string][]string{"Authorization": {"Bearer auth_token"}},
+			},
+			args: args{
+				logger: logger,
+				featureEvents: []exporter.FeatureEvent{
+					{
+						Kind: "feature", ContextKind: "anonymousUser", UserKey: "ABCD", CreationDate: 1617970547, Key: "random-key",
+						Variation: "Default", Value: "YO", Default: false, Source: "SERVER",
+					},
+					{
+						Kind: "feature", ContextKind: "anonymousUser", UserKey: "EFGH", CreationDate: 1617970701, Key: "random-key",
+						Variation: "Default", Value: "YO2", Default: false, Version: "127", Source: "SERVER",
+					},
+				},
+			},
+			expected: expected{
+				bodyFilePath: "./testdata/valid_without_signature.json",
+				signHeader:   "",
+				headers: map[string][]string{
+					"Authorization": {"Bearer auth_token"},
+					"Content-Type":  {"application/json"}},
+			},
+			wantErr: false,
 		},
 	}
 	for _, tt := range tests {
@@ -157,6 +186,7 @@ func TestWebhook_Export(t *testing.T) {
 				Secret:      tt.fields.Secret,
 				Meta:        tt.fields.Meta,
 				httpClient:  &tt.fields.httpClient,
+				Headers:     tt.fields.Headers,
 			}
 			err := f.Export(context.Background(), tt.args.logger, tt.args.featureEvents)
 			if tt.wantErr {
@@ -166,13 +196,17 @@ func TestWebhook_Export(t *testing.T) {
 
 			assert.NoError(t, err)
 			if tt.expected.bodyFilePath != "" {
-				c, err := ioutil.ReadFile(tt.expected.bodyFilePath)
-				fmt.Println(err)
+				c, err := os.ReadFile(tt.expected.bodyFilePath)
+				assert.NoError(t, err)
 				assert.JSONEq(t, string(c), tt.fields.httpClient.Body)
 			}
 
 			if tt.expected.signHeader != "" {
 				assert.Equal(t, tt.expected.signHeader, tt.fields.httpClient.Signature)
+			}
+
+			if tt.expected.headers != nil {
+				assert.Equal(t, tt.expected.headers, tt.fields.httpClient.Headers)
 			}
 		})
 	}
@@ -183,6 +217,6 @@ func TestWebhook_Export_impossibleToParse(t *testing.T) {
 		EndpointURL: " http://invalid.com/",
 	}
 
-	err := f.Export(context.Background(), log.New(os.Stdout, "", 0), []exporter.FeatureEvent{})
+	err := f.Export(context.Background(), &fflog.FFLogger{LeveledLogger: slog.Default()}, []exporter.FeatureEvent{})
 	assert.EqualError(t, err, "parse \" http://invalid.com/\": first path segment in URL cannot contain colon")
 }

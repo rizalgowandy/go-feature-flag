@@ -3,14 +3,14 @@ package main
 import (
 	"context"
 	"fmt"
+	"github.com/thomaspoignant/go-feature-flag/ffcontext"
 	"log"
-	"os"
+	"log/slog"
 	"time"
 
 	"github.com/thomaspoignant/go-feature-flag/retriever/fileretriever"
 
 	ffclient "github.com/thomaspoignant/go-feature-flag"
-	"github.com/thomaspoignant/go-feature-flag/ffuser"
 )
 
 func main() {
@@ -19,10 +19,10 @@ func main() {
 
 	err := ffclient.Init(ffclient.Config{
 		PollingInterval: 10 * time.Second,
-		Logger:          log.New(os.Stdout, "", 0),
+		LeveledLogger:   slog.Default(),
 		Context:         context.Background(),
 		Retriever: &fileretriever.Retriever{
-			Path: "examples/rollout_progressive/flags.yaml",
+			Path: "examples/rollout_progressive/flags.goff.yaml",
 		},
 	})
 	// Check init errors.
@@ -33,7 +33,7 @@ func main() {
 	defer ffclient.Close()
 
 	// create users
-	user := ffuser.NewUserBuilder("785a14bf-d2c5-4caa-9c70-2bbc4e3732a5").
+	user := ffcontext.NewEvaluationContextBuilder("785a14bf-d2c5-4caa-9c70-2bbc4e3732a5").
 		AddCustom("beta", "true").
 		Build()
 

@@ -3,23 +3,27 @@ package fileexporter
 import (
 	"context"
 	"fmt"
-	"log"
 	"os"
+	"path/filepath"
+	"runtime"
 	"strings"
 	"sync"
 	"text/template"
 
 	"github.com/thomaspoignant/go-feature-flag/exporter"
+	"github.com/thomaspoignant/go-feature-flag/utils/fflog"
+	"github.com/xitongsys/parquet-go-source/local"
+	"github.com/xitongsys/parquet-go/parquet"
+	"github.com/xitongsys/parquet-go/writer"
 )
 
 type Exporter struct {
 	// Format is the output format you want in your exported file.
-	// Available format are JSON and CSV.
+	// Available format are JSON, CSV, and Parquet.
 	// Default: JSON
 	Format string
 
 	// OutputDir is the location of the directory where to store the exported files
-	// It should finish with a /
 	// Default: the current directory
 	OutputDir string
 
@@ -34,8 +38,14 @@ type Exporter struct {
 	// You can decide which fields you want in your CSV line with a go-template syntax,
 	// please check exporter/feature_event.go to see what are the fields available.
 	// Default:
-	// {{ .Kind}};{{ .ContextKind}};{{ .UserKey}};{{ .CreationDate}};{{ .Key}};{{ .Variation}};{{ .Value}};{{ .Default}}\n
+	// {{ .Kind}};{{ .ContextKind}};{{ .UserKey}};{{ .CreationDate}};{{ .Key}};{{ .Variation}};{{ .Value}};
+	// {{ .Default}};{{ .Source}}\n
 	CsvTemplate string
+
+	// ParquetCompressionCodec is the parquet compression codec for better space efficiency.
+	// Available options https://github.com/apache/parquet-format/blob/master/Compression.md
+	// Default: SNAPPY
+	ParquetCompressionCodec string
 
 	csvTemplate      *template.Template
 	filenameTemplate *template.Template
@@ -43,7 +53,7 @@ type Exporter struct {
 }
 
 // Export is saving a collection of events in a file.
-func (f *Exporter) Export(ctx context.Context, logger *log.Logger, featureEvents []exporter.FeatureEvent) error {
+func (f *Exporter) Export(_ context.Context, _ *fflog.FFLogger, featureEvents []exporter.FeatureEvent) error {
 	// Parse the template only once
 	f.initTemplates.Do(func() {
 		f.csvTemplate = exporter.ParseTemplate("csvFormat", f.CsvTemplate, exporter.DefaultCsvTemplate)
@@ -54,6 +64,7 @@ func (f *Exporter) Export(ctx context.Context, logger *log.Logger, featureEvents
 	if f.Format == "" {
 		f.Format = "json"
 	}
+	f.Format = strings.ToLower(f.Format)
 
 	// Get the filename
 	filename, err := exporter.ComputeFilename(f.filenameTemplate, f.Format)
@@ -61,8 +72,33 @@ func (f *Exporter) Export(ctx context.Context, logger *log.Logger, featureEvents
 		return err
 	}
 
-	filePath := f.OutputDir + "/" + filename
+	// Handle empty OutputDir and remove trailing slash
+	outputDir := strings.TrimRight(f.OutputDir, "/")
 
+	var filePath string
+	if outputDir == "" {
+		filePath = filename
+	} else {
+		// Ensure OutputDir exists or create it
+		if err := os.MkdirAll(outputDir, 0755); err != nil {
+			return fmt.Errorf("failed to create output directory: %v", err)
+		}
+		filePath = filepath.Join(outputDir, filename)
+	}
+
+	if f.Format == "parquet" {
+		return f.writeParquet(filePath, featureEvents)
+	}
+	return f.writeFile(filePath, featureEvents)
+}
+
+// IsBulk return false if we should directly send the data as soon as it is produce
+// and true if we collect the data to send them in bulk.
+func (f *Exporter) IsBulk() bool {
+	return true
+}
+
+func (f *Exporter) writeFile(filePath string, featureEvents []exporter.FeatureEvent) error {
 	file, err := os.OpenFile(filePath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o644)
 	if err != nil {
 		return err
@@ -73,7 +109,7 @@ func (f *Exporter) Export(ctx context.Context, logger *log.Logger, featureEvents
 		var err error
 
 		// Convert the line in the right format
-		switch strings.ToLower(f.Format) {
+		switch f.Format {
 		case "csv":
 			line, err = exporter.FormatEventInCSV(f.csvTemplate, event)
 		case "json":
@@ -94,8 +130,31 @@ func (f *Exporter) Export(ctx context.Context, logger *log.Logger, featureEvents
 	return nil
 }
 
-// IsBulk return false if we should directly send the data as soon as it is produce
-// and true if we collect the data to send them in bulk.
-func (f *Exporter) IsBulk() bool {
-	return true
+func (f *Exporter) writeParquet(filePath string, featureEvents []exporter.FeatureEvent) error {
+	fw, err := local.NewLocalFileWriter(filePath)
+	if err != nil {
+		return err
+	}
+	defer fw.Close()
+
+	pw, err := writer.NewParquetWriter(fw, new(exporter.FeatureEvent), int64(runtime.NumCPU()))
+	if err != nil {
+		return err
+	}
+
+	pw.CompressionType = parquet.CompressionCodec_SNAPPY
+	if ct, err := parquet.CompressionCodecFromString(f.ParquetCompressionCodec); err == nil {
+		pw.CompressionType = ct
+	}
+
+	for _, event := range featureEvents {
+		if err := event.MarshalInterface(); err != nil {
+			return err
+		}
+		if err = pw.Write(event); err != nil {
+			return fmt.Errorf("error while writing the export file: %v", err)
+		}
+	}
+
+	return pw.WriteStop()
 }

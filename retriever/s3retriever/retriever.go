@@ -3,7 +3,7 @@ package s3retriever
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
+	"os"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
@@ -13,6 +13,7 @@ import (
 )
 
 // Retriever is a configuration struct for a S3 retriever.
+// Deprecated: use s3retrieverv2.Retriever instead.
 type Retriever struct {
 	// Bucket is the name of your S3 Bucket.
 	Bucket string
@@ -32,11 +33,16 @@ func (s *Retriever) Retrieve(ctx context.Context) ([]byte, error) {
 	// Download the item from the bucket.
 	// If an error occurs, log it and exit.
 	// Otherwise, notify the user that the download succeeded.
-	file, err := ioutil.TempFile("", "go_feature_flag")
+	file, err := os.CreateTemp("", "go_feature_flag")
+
 	if err != nil {
 		return nil, err
 	}
 
+	defer func() {
+		_ = file.Close()
+		_ = os.Remove(file.Name())
+	}()
 	// Create an AWS session
 	sess, err := session.NewSession(&s.AwsConfig)
 	if err != nil {
@@ -64,7 +70,7 @@ func (s *Retriever) Retrieve(ctx context.Context) ([]byte, error) {
 	}
 
 	// Read file content
-	content, err := ioutil.ReadAll(file)
+	content, err := os.ReadFile(file.Name())
 	if err != nil {
 		return nil, err
 	}

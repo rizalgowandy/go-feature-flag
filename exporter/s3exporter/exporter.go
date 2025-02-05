@@ -2,22 +2,20 @@ package s3exporter
 
 import (
 	"context"
-	"io/ioutil"
-	"log"
+	"log/slog"
 	"os"
 	"sync"
-
-	"github.com/thomaspoignant/go-feature-flag/exporter"
-	"github.com/thomaspoignant/go-feature-flag/exporter/fileexporter"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/s3/s3manager"
 	"github.com/aws/aws-sdk-go/service/s3/s3manager/s3manageriface"
-
-	"github.com/thomaspoignant/go-feature-flag/internal/fflog"
+	"github.com/thomaspoignant/go-feature-flag/exporter"
+	"github.com/thomaspoignant/go-feature-flag/exporter/fileexporter"
+	"github.com/thomaspoignant/go-feature-flag/utils/fflog"
 )
 
+// Deprecated: Please use s3exporterv2.DeprecatedExporter instead, it will use the go-aws-sdk-v2.
 type Exporter struct {
 	// Bucket is the name of your Exporter Bucket.
 	Bucket string
@@ -27,7 +25,7 @@ type Exporter struct {
 	AwsConfig *aws.Config
 
 	// Format is the output format you want in your exported file.
-	// Available format are JSON and CSV.
+	// Available format are JSON, CSV and Parquet.
 	// Default: JSON
 	Format string
 
@@ -48,12 +46,17 @@ type Exporter struct {
 	// {{ .Kind}};{{ .ContextKind}};{{ .UserKey}};{{ .CreationDate}};{{ .Key}};{{ .Variation}};{{ .Value}};{{ .Default}}\n
 	CsvTemplate string
 
+	// ParquetCompressionCodec is the parquet compression codec for better space efficiency.
+	// Available options https://github.com/apache/parquet-format/blob/master/Compression.md
+	// Default: SNAPPY
+	ParquetCompressionCodec string
+
 	s3Uploader s3manageriface.UploaderAPI
 	init       sync.Once
 }
 
 // Export is saving a collection of events in a file.
-func (f *Exporter) Export(ctx context.Context, logger *log.Logger, featureEvents []exporter.FeatureEvent) error {
+func (f *Exporter) Export(ctx context.Context, logger *fflog.FFLogger, featureEvents []exporter.FeatureEvent) error {
 	// init the s3 uploader
 	if f.s3Uploader == nil {
 		var initErr error
@@ -69,27 +72,28 @@ func (f *Exporter) Export(ctx context.Context, logger *log.Logger, featureEvents
 	}
 
 	// Create a temp directory to store the file we will produce
-	outputDir, err := ioutil.TempDir("", "go_feature_flag_s3_export")
+	outputDir, err := os.MkdirTemp("", "go_feature_flag_s3_export")
 	if err != nil {
 		return err
 	}
 	defer func() { _ = os.Remove(outputDir) }()
 
 	// We call the File data exporter to get the file in the right format.
-	// Files will be put in the temp directory, so we will be able to upload them to Exporter from there.
+	// Files will be put in the temp directory, so we will be able to upload them to DeprecatedExporter from there.
 	fileExporter := fileexporter.Exporter{
-		Format:      f.Format,
-		OutputDir:   outputDir,
-		Filename:    f.Filename,
-		CsvTemplate: f.CsvTemplate,
+		Format:                  f.Format,
+		OutputDir:               outputDir,
+		Filename:                f.Filename,
+		CsvTemplate:             f.CsvTemplate,
+		ParquetCompressionCodec: f.ParquetCompressionCodec,
 	}
 	err = fileExporter.Export(ctx, logger, featureEvents)
 	if err != nil {
 		return err
 	}
 
-	// Upload all the files in the folder to Exporter
-	files, err := ioutil.ReadDir(outputDir)
+	// Upload all the files in the folder to DeprecatedExporter
+	files, err := os.ReadDir(outputDir)
 	if err != nil {
 		return err
 	}
@@ -97,7 +101,8 @@ func (f *Exporter) Export(ctx context.Context, logger *log.Logger, featureEvents
 		// read file
 		of, err := os.Open(outputDir + "/" + file.Name())
 		if err != nil {
-			fflog.Printf(logger, "error: [S3Exporter] impossible to open the file %s/%s", outputDir, file.Name())
+			logger.Error("[S3Exporter] impossible to open the file",
+				slog.String("directory", outputDir), slog.String("filePath", file.Name()))
 			continue
 		}
 
@@ -112,7 +117,8 @@ func (f *Exporter) Export(ctx context.Context, logger *log.Logger, featureEvents
 			return err
 		}
 
-		fflog.Printf(logger, "info: [S3Exporter] file %s uploaded.", result.Location)
+		logger.Info("[S3Exporter] file uploaded.",
+			slog.String("fileLocation", result.Location))
 	}
 	return nil
 }

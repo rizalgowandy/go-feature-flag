@@ -7,18 +7,17 @@ import (
 	"time"
 
 	"github.com/aws/aws-sdk-go/aws"
+	"github.com/stretchr/testify/assert"
+	ffClient "github.com/thomaspoignant/go-feature-flag"
 	"github.com/thomaspoignant/go-feature-flag/retriever"
 	"github.com/thomaspoignant/go-feature-flag/retriever/fileretriever"
 	"github.com/thomaspoignant/go-feature-flag/retriever/githubretriever"
+	"github.com/thomaspoignant/go-feature-flag/retriever/gitlabretriever"
 	"github.com/thomaspoignant/go-feature-flag/retriever/httpretriever"
 	"github.com/thomaspoignant/go-feature-flag/retriever/s3retriever"
-
-	"github.com/stretchr/testify/assert"
-
-	ffClient "github.com/thomaspoignant/go-feature-flag"
 )
 
-func TestConfig_GetRetriever(t *testing.T) {
+func TestConfig_GetRetrievers(t *testing.T) {
 	type fields struct {
 		PollingInterval time.Duration
 		Retriever       retriever.Retriever
@@ -79,6 +78,20 @@ func TestConfig_GetRetriever(t *testing.T) {
 			wantErr: false,
 		},
 		{
+			name: "Gitlab retriever",
+			fields: fields{
+				PollingInterval: 3 * time.Second,
+				Retriever: &gitlabretriever.Retriever{
+					BaseURL:        "https://gitlab.com/",
+					RepositorySlug: "ruairi2/go-feature-flags-config",
+					FilePath:       "flag-config.yaml",
+					GitlabToken:    "XXX",
+				},
+			},
+			want:    "*gitlabretriever.Retriever",
+			wantErr: false,
+		},
+		{
 			name: "No retriever",
 			fields: fields{
 				PollingInterval: 3 * time.Second,
@@ -92,11 +105,20 @@ func TestConfig_GetRetriever(t *testing.T) {
 				PollingInterval: tt.fields.PollingInterval,
 				Retriever:       tt.fields.Retriever,
 			}
-			got, err := c.GetRetriever()
+			got, err := c.GetRetrievers()
 			assert.Equal(t, tt.wantErr, err != nil)
 			if err == nil {
-				assert.Equal(t, tt.want, reflect.ValueOf(got).Type().String())
+				assert.Equal(t, tt.want, reflect.ValueOf(got[0]).Type().String())
 			}
 		})
 	}
+}
+
+func TestOfflineConfig(t *testing.T) {
+	c := ffClient.Config{
+		Offline: true,
+	}
+	assert.True(t, c.IsOffline())
+	c.SetOffline(false)
+	assert.False(t, c.IsOffline())
 }

@@ -6,9 +6,8 @@ import (
 	"testing"
 	"text/template"
 
-	"github.com/thomaspoignant/go-feature-flag/exporter"
-
 	"github.com/stretchr/testify/assert"
+	"github.com/thomaspoignant/go-feature-flag/exporter"
 )
 
 func Test_ParseTemplate(t *testing.T) {
@@ -133,10 +132,10 @@ func TestFormatEventInCSV(t *testing.T) {
 				csvTemplate: exporter.ParseTemplate("exporterExample", exporter.DefaultCsvTemplate, exporter.DefaultCsvTemplate),
 				event: exporter.FeatureEvent{
 					Kind: "feature", ContextKind: "anonymousUser", UserKey: "ABCD", CreationDate: 1617970547, Key: "random-key",
-					Variation: "Default", Value: "YO", Default: false,
+					Variation: "Default", Value: "YO", Default: false, Source: "SERVER",
 				},
 			},
-			want:    "feature;anonymousUser;ABCD;1617970547;random-key;Default;YO;false\n",
+			want:    "feature;anonymousUser;ABCD;1617970547;random-key;Default;YO;false;SERVER\n",
 			wantErr: assert.NoError,
 		},
 	}
@@ -165,9 +164,9 @@ func TestFormatEventInJSON(t *testing.T) {
 			name: "valid",
 			args: args{event: exporter.FeatureEvent{
 				Kind: "feature", ContextKind: "anonymousUser", UserKey: "ABCD", CreationDate: 1617970547, Key: "random-key",
-				Variation: "Default", Value: "YO", Default: false,
+				Variation: "Default", Value: "YO", Default: false, Source: "SERVER",
 			}},
-			want:    "{\"kind\":\"feature\",\"contextKind\":\"anonymousUser\",\"userKey\":\"ABCD\",\"creationDate\":1617970547,\"key\":\"random-key\",\"variation\":\"Default\",\"value\":\"YO\",\"default\":false,\"version\":0}\n",
+			want:    "{\"kind\":\"feature\",\"contextKind\":\"anonymousUser\",\"userKey\":\"ABCD\",\"creationDate\":1617970547,\"key\":\"random-key\",\"variation\":\"Default\",\"value\":\"YO\",\"default\":false,\"version\":\"\",\"source\":\"SERVER\"}\n",
 			wantErr: assert.NoError,
 		},
 	}

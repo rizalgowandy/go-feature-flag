@@ -5,10 +5,9 @@ import (
 	"net/http"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/thomaspoignant/go-feature-flag/retriever/httpretriever"
 	"github.com/thomaspoignant/go-feature-flag/testutils/mock"
-
-	"github.com/stretchr/testify/assert"
 )
 
 func Test_httpRetriever_Retrieve(t *testing.T) {
@@ -36,11 +35,16 @@ func Test_httpRetriever_Retrieve(t *testing.T) {
 				header:     nil,
 			},
 			want: []byte(`test-flag:
- rule: key eq "random-key"
- percentage: 100
- true: true
- false: false
- default: false
+  variations:
+    true_var: true
+    false_var: false
+  targeting:
+    - query: key eq "random-key"
+      percentage:
+        true_var: 0
+        false_var: 100
+  defaultRule:
+    variation: false_var	
 `),
 			wantErr: false,
 		},
@@ -55,11 +59,16 @@ func Test_httpRetriever_Retrieve(t *testing.T) {
 				context:    context.Background(),
 			},
 			want: []byte(`test-flag:
- rule: key eq "random-key"
- percentage: 100
- true: true
- false: false
- default: false
+  variations:
+    true_var: true
+    false_var: false
+  targeting:
+    - query: key eq "random-key"
+      percentage:
+        true_var: 0
+        false_var: 100
+  defaultRule:
+    variation: false_var	
 `),
 			wantErr: false,
 		},
@@ -72,11 +81,16 @@ func Test_httpRetriever_Retrieve(t *testing.T) {
 				header:     nil,
 			},
 			want: []byte(`test-flag:
- rule: key eq "random-key"
- percentage: 100
- true: true
- false: false
- default: false
+  variations:
+    true_var: true
+    false_var: false
+  targeting:
+    - query: key eq "random-key"
+      percentage:
+        true_var: 0
+        false_var: 100
+  defaultRule:
+    variation: false_var	
 `),
 			wantErr: false,
 		},

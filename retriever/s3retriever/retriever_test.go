@@ -2,13 +2,12 @@ package s3retriever
 
 import (
 	"context"
-	"io/ioutil"
+	"os"
 	"testing"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/s3/s3manager/s3manageriface"
 	"github.com/stretchr/testify/assert"
-
 	"github.com/thomaspoignant/go-feature-flag/testutils"
 )
 
@@ -73,7 +72,7 @@ func Test_s3Retriever_Retrieve(t *testing.T) {
 			got, err := s.Retrieve(tt.fields.context)
 			assert.Equal(t, tt.wantErr, err != nil, "Retrieve() error = %v, wantErr %v", err, tt.wantErr)
 			if err == nil {
-				want, err := ioutil.ReadFile(tt.want)
+				want, err := os.ReadFile(tt.want)
 				assert.NoError(t, err)
 				assert.Equal(t, string(want), string(got), "Retrieve() got = %v, want %v", string(want), string(got))
 			}

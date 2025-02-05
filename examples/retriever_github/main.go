@@ -3,26 +3,26 @@ package main
 import (
 	"context"
 	"fmt"
+	"github.com/thomaspoignant/go-feature-flag/ffcontext"
 	"log"
-	"os"
+	"log/slog"
 	"time"
 
 	"github.com/thomaspoignant/go-feature-flag/retriever/githubretriever"
 
 	ffclient "github.com/thomaspoignant/go-feature-flag"
-	"github.com/thomaspoignant/go-feature-flag/ffuser"
 )
 
 func main() {
 	// Init ffclient with a GitHub retriever.
 	err := ffclient.Init(ffclient.Config{
 		PollingInterval: 10 * time.Second,
-		Logger:          log.New(os.Stdout, "", 0),
+		LeveledLogger:   slog.Default(),
 		Context:         context.Background(),
 		Retriever: &githubretriever.Retriever{
 			RepositorySlug: "thomaspoignant/go-feature-flag",
 			Branch:         "main",
-			FilePath:       "examples/github/flags.yaml",
+			FilePath:       "examples/retriever_github/flags.goff.yaml",
 			Timeout:        3 * time.Second,
 		},
 	})
@@ -34,9 +34,12 @@ func main() {
 	defer ffclient.Close()
 
 	// create users
-	user1 := ffuser.NewAnonymousUser("aea2fdc1-b9a0-417a-b707-0c9083de68e3")
-	user2 := ffuser.NewUser("332460b9-a8aa-4f7a-bc5d-9cc33632df9a")
-	user3 := ffuser.NewUserBuilder("785a14bf-d2c5-4caa-9c70-2bbc4e3732a5").
+	user1 := ffcontext.
+		NewEvaluationContextBuilder("aea2fdc1-b9a0-417a-b707-0c9083de68e3").
+		AddCustom("anonymous", true).
+		Build()
+	user2 := ffcontext.NewEvaluationContext("332460b9-a8aa-4f7a-bc5d-9cc33632df9a")
+	user3 := ffcontext.NewEvaluationContextBuilder("785a14bf-d2c5-4caa-9c70-2bbc4e3732a5").
 		AddCustom("email", "user2@email.com").
 		AddCustom("firstname", "John").
 		AddCustom("lastname", "Doe").

@@ -1,55 +1,152 @@
-# Contributing
+# Contributing to GO Feature Flag
 
-When contributing to this repository, please first discuss the change you wish to make via an issue.  
-Please note we have a [code of conduct](CODE_OF_CONDUCT.md), please follow it in all your interactions with the project.
+Thank you for considering contributing to this repository!  
+You will contribute to the coolest Opensource Feature Flag solution and be part of an awesome community 😜.
 
-# Pull Request Process
+We welcome contributions to improve and grow this project.  
+Please take a moment to review the following guidelines.
 
-1. Ensure any install or build dependencies are removed before the end of the layer when doing a build.
-2. Please mention the issue in your PR description.
-3. Expect to be taken seriously, if there are some feedbacks, feel free to discuss about it, your opinion can be better than mine.
+## Table of Contents
 
-# Coding standards
+1. [Code of Conduct](#-code-of-conduct)
+2. [How Can I Contribute?](#-how-can-i-contribute)
+3. [Where can I ask questions about the project?](#-where-can-i-ask-questions-about-the-project)
+4. [Community Meetings](#-community-meeting)
+5. [Development Setup](#-development-setup)
+6. [Documentation](#-documentation)
+7. [License](#-license)
 
-A library is easier to use, and easier for contributors to work on if it has a consistent, unified style, approach, and layout.
 
-We are using [pre-commit](https://pre-commit.com/) to lint before each commit, I would recommend you to use it.
+## 🚓 Code of Conduct
+We expect all contributors to abide by our [Code of Conduct](CODE_OF_CONDUCT.md).  
+Please read it thoroughly before contributing.
+
+## 🙇 How Can I Contribute?
+
+### Bug Reports
+If you encounter any bugs or issues with the project, please [create a new issue](../../issues/new?assignees=&labels=bug%2Cneeds-triage&projects=&template=bug.yaml&title=%28bug%29+%3Ctitle%3E) and include as many details as possible, such as:
+
+- A clear and descriptive title
+- Steps to reproduce the bug
+- Expected behaviour and actual behaviour
+- Your operating system and version
+- The version of the project you were using when the bug occurred
+- Any relevant error messages or logs
+
+### Feature Requests
+
+If you have a feature idea that you would like to see implemented, please [create a new issue](../../issues/new?assignees=&labels=enhancement%2Cneeds-triage&projects=&template=feature.yaml&title=(feature)+<title>) with the following information:
+
+- A clear and descriptive title
+- A detailed description of the feature
+- Any additional context that may be relevant
+
+### Pull Requests
+
+We welcome contributions in the form of pull requests. 
+
+Before opening a pull request, we kindly request you check if there is an open issue related to your proposed contribution.
+By doing so, we can initiate a discussion and provide feedback on your changes before proceeding with the pull request.
+This approach ensures that your efforts align with the project's goals and enhances the chances of your contribution being successfully integrated. Thank you for your understanding and cooperation!
+
+If you want to take an issue that is already open, please follow those steps:
+
+1. Check that the issue is not assigned.
+2. Assign the issue to yourself by adding a comment on the issue containing the text `/assign-me`.
+3. This will assign you the issue automatically.
+4. After 10 days the assignment will be removed, if you need more time to work on it add a comment on the issue.
+
+To submit a pull request, follow these steps:
+
+1. Fork the repository to your GitHub account.
+2. Create a new branch from the `main` branch.
+3. Make your changes.
+4. Test your changes thoroughly.
+5. Commit your changes with a clear and descriptive commit message.
+6. Push your branch to your forked repository.
+7. Open a pull request, comparing your branch to the `main` branch of this repository.
+8. Provide a detailed description of your changes in the pull request.
+
+We will review your pull request as soon as possible
+Please be patient, as it might take some time for us to get back to you
+Your contributions are highly valued!
+
+## 🧑‍💻 Development Setup
+We always strive to keep the project as simple as possible, so you will find everything you need in the `Makefile` at the root of the repository.
+
+To start contributing please set up your GO environment and run: 
+
+```shell
+make vendor
+```
+It will download the dependencies and your project will be ready to be used.
+
+### Coding standards
+
+It is easier for contributors to work on the same project if it has a consistent, unified style, approach, and layout.
+
+To help with that, we are using [pre-commit](https://pre-commit.com/) to lint before each commit, I would recommend you to install it, and to apply it to the project by running:
 ```bash
 pre-commit install
 ```
 
-## Tests
-
+### Tests
 Every feature or bug should come with an associate test to keep the coverage as high as possible.
+We aim to have 90% of coverage for the project.
 
-## Documentation
+## 🤔 Where can I ask questions about the project?
+If you want to contribute and you have any questions you can use different ways to contact us.
+
+1. You can create an issue and ask your question - [Create an issue](https://github.com/thomaspoignant/go-feature-flag/issues/new/choose).
+2. You can join the `#go-feature-flag` channel in the gopher slack.  
+   To join:
+   - Request an invitation [here](https://invite.slack.golangbridge.org/)
+   - Join the [`#go-feature-flag`](https://gophers.slack.com/archives/C029TH8KDFG) channel.
+4. Send us an email to contact@gofeatureflag.org
+
+## 🎤 Community Meeting
+Since everyone's voice is important we want to hear back from the community.  
+For this reason, we are launching a community meeting every 2 weeks and it is the perfect place to discuss the future of GO Feature Flag and help you use it at full potential.
+
+| Name | Meeting Time | Meeting Notes | Discussions |
+| ---- | ------------ | ------------- | ----------- |
+| GO Feature Flag Community Meeting | Every other Thursday at 10:00 am ET / 16:00 CET | [Google Doc](https://docs.google.com/document/d/13hVS1Eoq6iHwegdk4lveTE3jV4mUehVGqUtf5TLH2pY/edit) | [VC Link (meet)](https://meet.google.com/fpg-ckxs-vmr) |
+
+- [Calendar](https://bit.ly/gofeatureflag-calendar)
+- [ICS](https://calendar.google.com/calendar/ical/30ba1a7fbba6dc31596a2686f6ab22e9971e8785289033f8bb32319c93dd3b59%40group.calendar.google.com/public/basic.ics)
+- [Web](https://calendar.google.com/calendar/embed?src=30ba1a7fbba6dc31596a2686f6ab22e9971e8785289033f8bb32319c93dd3b59%40group.calendar.google.com&ctz=Europe%2FParis)
+
+
+## 📚 Documentation
 
 We are maintaining 2 documentations:
 - [README.md](README.md) which contains everything you need to know to start working with the module.
-- [go-feature-flag website](https://thomaspoignant.github.io/go-feature-flag/) which is the full detail documentation of the module.
+- [go-feature-flag website](https://gofeatureflag.org) which is the full detail website containing the documentation.
 
-If your contribution has impact on the documentation, please check both version.
+If your contribution has an impact on the documentation, please check both versions. You can check how to work on the documentation [here](./website/README.md).
 
 ### How to run the documentation website locally
 
-For the documentation website we are using [mkdocs](https://www.mkdocs.org/) with the "[Material for MkDocs](https://squidfunk.github.io/mkdocs-material/)" theme.
-To run it locally just use the docker image:
+For the documentation website, we are using [Docusaurus 2](https://docusaurus.io/).  
+Everything is available in the [`website/docs`](website/docs) directory.
+
+You can start locally the website.
+
+1. Open a terminal and go to the root project of this repository.
+2. Launch the command below, it will install the dependencies and run the local server for the documentation.
 ```shell
-docker run --rm -it -p 8000:8000 -v ${PWD}:/docs squidfunk/mkdocs-material
+make watch-doc
 ```
-The website will be available on http://localhost:8000/
+3. You can now access to the documentation directly in your browser: [http://localhost:3000/](http://localhost:3000/).
 
-## Sonar
+## 🪪 License
 
-Sonarcloud is used in the project, it will comment your PR to give you feedback on your code.
+By contributing to this repository, you agree that your contributions will be licensed under the [LICENSE](LICENSE) of the project.
 
-### Continuous integration
+## 📊 Stats
 
-We have a list of steps on each PR.  
-The CI is running:
+If you want to check the stats of GO Feature Flag you can have a look at https://github-repo-stats--goff-github-stats.netlify.app/report.html
 
- - Tests
- - Coverage
- - Code quality
+---
 
-With this CI you will have feedbacks on your PR after opening your PR. Please review it if it fails.
+We encourage everyone to participate in this project and make it better for everyone. Happy contributing 🎉 

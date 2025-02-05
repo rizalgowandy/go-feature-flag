@@ -1,7 +1,3 @@
-run:
-  skip-dirs:
-    - (^|/)bin($|/)
-    - (^|/)examples($|/)
 linters:
   enable:
     - asciicheck
@@ -22,11 +18,13 @@ linters:
     - noctx
     - prealloc
     - rowserrcheck
-    - exportloopref
+    - copyloopvar
     - stylecheck
     - unconvert
     - unparam
     - whitespace
+    - gofmt
+    - gci
 #    - gofumpt
 linters-settings:
   funlen:
@@ -37,10 +35,17 @@ linters-settings:
       - singleCaseSwitch
   golint:
     min-confidence: 0.6
+  gosimple:
+    checks: ["all","-S1023"]
   gofumpt:
     module-path: github.com/thomaspoignant/go-feature-flag
-    lang-version: "1.17"
+  gci:
+    skip-generated: true
+    no-lex-order: true
 issues:
+  exclude-dirs:
+    - (^|/)bin($|/)
+    - (^|/)examples($|/)
   exclude-rules:
     - path: _test.go
       linters:
@@ -56,3 +61,21 @@ issues:
         - gochecknoinits
         - dupl
         - staticcheck
+        - revive
+        - gosec
+        - copyloopvar
+    - path: _mock.go
+      linters:
+        - funlen
+        - maligned
+        - noctx
+        - scopelint
+        - bodyclose
+        - lll
+        - goconst
+        - gocognit
+        - gocyclo
+        - gochecknoinits
+        - dupl
+        - staticcheck
+        - revive

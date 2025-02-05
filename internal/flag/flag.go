@@ -1,36 +1,28 @@
 package flag
 
 import (
-	"github.com/thomaspoignant/go-feature-flag/ffuser"
+	"github.com/thomaspoignant/go-feature-flag/ffcontext"
 )
 
 type Flag interface {
-	// Value is returning the Value associate to the flag (True / False / Default )
-	Value(flagName string, user ffuser.User, evaluationCtx EvaluationContext) (interface{}, ResolutionDetails)
-
-	// String display correctly a flag with the right formatting
-	String() string
+	// Value is returning the Value associate to the flag
+	Value(flagName string, evaluationContext ffcontext.Context, flagContext Context) (interface{}, ResolutionDetails)
 
 	// GetVersion is the getter for the field Version
 	// Default: 0.0
-	GetVersion() float64
+	GetVersion() string
 
-	// GetTrackEvents is the getter of the field TrackEvents
+	// IsTrackEvents is the getter of the field TrackEvents
 	// Default: true
-	GetTrackEvents() bool
+	IsTrackEvents() bool
 
-	// GetDisable is the getter for the field Disable
+	// IsDisable is the getter for the field Disable
 	// Default: false
-	GetDisable() bool
-
-	// GetDefaultVariation return the name of the default variation (if something goes wrong)
-	GetDefaultVariation() string
+	IsDisable() bool
 
 	// GetVariationValue return the value of variation from his name
-	GetVariationValue(variationName string) interface{}
+	GetVariationValue(name string) interface{}
 
-	// GetRawValues is returning a raw value of the Flag used by the notifiers
-	// We should not have any logic based on these values, this is only to
-	// display  the information.
-	GetRawValues() map[string]string
+	// GetMetadata return the metadata associated to the flag
+	GetMetadata() map[string]interface{}
 }

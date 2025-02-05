@@ -5,38 +5,37 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
-	"log"
+	"io"
 	"net/http"
 	"os"
 	"sync"
 
 	"github.com/thomaspoignant/go-feature-flag/exporter"
-
 	"github.com/thomaspoignant/go-feature-flag/internal"
 	"github.com/thomaspoignant/go-feature-flag/internal/signer"
+	"github.com/thomaspoignant/go-feature-flag/utils/fflog"
 )
 
 // Exporter is the exporter of your data to a webhook.
 // It calls the EndpointURL with a POST request with the following format:
 //
-//   {
-//      "meta": {
-//        "hostname": "server01",
-//      },
-//      "events": [
-//        {
-//           "kind": "feature",
-//           "contextKind": "anonymousUser",
-//           "userKey": "14613538188334553206",
-//           "creationDate": 1618909178,
-//           "key": "test-flag",
-//           "variation": "Default",
-//           "value": false,
-//           "default": false
-//        },
-//      ]
-//    }
+//	{
+//	   "meta": {
+//	     "hostname": "server01",
+//	   },
+//	   "events": [
+//	     {
+//	        "kind": "feature",
+//	        "contextKind": "anonymousUser",
+//	        "userKey": "14613538188334553206",
+//	        "creationDate": 1618909178,
+//	        "key": "test-flag",
+//	        "variation": "Default",
+//	        "value": false,
+//	        "default": false
+//	     },
+//	   ]
+//	 }
 type Exporter struct {
 	// EndpointURL of your webhook
 	EndpointURL string
@@ -44,6 +43,8 @@ type Exporter struct {
 	Secret string
 	// Meta information that you want to send to your webhook (not mandatory)
 	Meta map[string]string
+	// Headers (optional) the list of Headers to send to the endpoint
+	Headers map[string][]string
 
 	httpClient internal.HTTPClient
 	init       sync.Once
@@ -59,7 +60,7 @@ type webhookPayload struct {
 }
 
 // Export is sending a collection of events in a webhook call.
-func (f *Exporter) Export(ctx context.Context, logger *log.Logger, featureEvents []exporter.FeatureEvent) error {
+func (f *Exporter) Export(ctx context.Context, _ *fflog.FFLogger, featureEvents []exporter.FeatureEvent) error {
 	f.init.Do(func() {
 		if f.httpClient == nil {
 			f.httpClient = internal.DefaultHTTPClient()
@@ -84,27 +85,28 @@ func (f *Exporter) Export(ctx context.Context, logger *log.Logger, featureEvents
 		return err
 	}
 
-	headers := http.Header{
-		"Content-Type": []string{"application/json"},
+	if f.Headers == nil {
+		f.Headers = map[string][]string{}
 	}
+	f.Headers["Content-Type"] = []string{"application/json"}
 
-	// if a secret is provided we sign the body and add this signature as a header.
+	// if a secret is provided, we sign the body and add this signature as a header.
 	if f.Secret != "" {
-		headers["X-Hub-Signature-256"] = []string{signer.Sign(payload, []byte(f.Secret))}
+		f.Headers["X-Hub-Signature-256"] = []string{signer.Sign(payload, []byte(f.Secret))}
 	}
 
 	request, err := http.NewRequestWithContext(
-		ctx, http.MethodPost, f.EndpointURL, ioutil.NopCloser(bytes.NewReader(payload)))
+		ctx, http.MethodPost, f.EndpointURL, io.NopCloser(bytes.NewReader(payload)))
 	if err != nil {
 		return err
 	}
-	request.Header = headers
+	request.Header = f.Headers
 	response, err := f.httpClient.Do(request)
 	// Log if something went wrong while calling the webhook.
 	if err != nil {
 		return err
 	}
-	defer response.Body.Close()
+	defer func() { _ = response.Body.Close() }()
 	if response.StatusCode > 399 {
 		return fmt.Errorf(
 			"error while calling the webhook, HTTP Code %d received, response: %v", response.StatusCode, response.Body)

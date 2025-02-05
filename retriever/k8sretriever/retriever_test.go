@@ -7,26 +7,39 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	api "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/apis/meta/v1"
+	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/kubernetes/fake"
 	restclient "k8s.io/client-go/rest"
 )
 
-var expectedContent = `test-flag:
-  rule: key eq "random-key"
-  percentage: 100
-  true: true
-  false: false
-  default: false
+var expectedContent = `
+test-flag:
+  variations:
+    true_var: true
+    false_var: false
+  targeting:
+    - query: key eq "random-key"
+      percentage:
+        true_var: 0
+        false_var: 100
+  defaultRule:
+    variation: false_var	
+  trackEvents: false
 
 test-flag2:
-  rule: key eq "not-a-key"
-  percentage: 100
-  true: true
-  false: false
-  default: false
+  variations:
+    true_var: true
+    false_var: false
+  targeting:
+    - query: key eq "not-a-key"
+      percentage:
+        true_var: 0
+        false_var: 100
+  defaultRule:
+    variation: false_var	
+  trackEvents: false
 `
 
 func Test_kubernetesRetriever_Retrieve(t *testing.T) {
@@ -108,10 +121,29 @@ func Test_kubernetesRetriever_Retrieve(t *testing.T) {
 			},
 			wantErr: errors.New("unable to read from config map ConfigMap1.Namespace, error: configmaps \"ConfigMap1\" not found"),
 		},
+		{
+			name: "k8s client is nil",
+			fields: fields{
+				object: &api.ConfigMap{
+					ObjectMeta: v1.ObjectMeta{Name: "ConfigMap1", Namespace: "Namespace"},
+					Data:       map[string]string{"valid": expectedContent},
+				},
+				namespace:     "Namespace",
+				configMapName: "ConfigMap1",
+				key:           "valid",
+			},
+			wantErr: errors.New("k8s client is nil after initialization"),
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			kubeClientProvider = kubeClientProviderFactory(tt.fields.object)
+			if tt.name == "k8s client is nil" {
+				// mocking the kubeClientProvider function
+				kubeClientProvider = func(config *restclient.Config) (kubernetes.Interface, error) {
+					return nil, nil
+				}
+			}
 			s := Retriever{
 				ConfigMapName: tt.fields.configMapName,
 				Key:           tt.fields.key,

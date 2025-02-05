@@ -2,15 +2,15 @@ package main
 
 import (
 	"context"
+	"github.com/thomaspoignant/go-feature-flag/ffcontext"
 	"log"
-	"os"
+	"log/slog"
 	"time"
 
 	"github.com/thomaspoignant/go-feature-flag/exporter/logsexporter"
 	"github.com/thomaspoignant/go-feature-flag/retriever/fileretriever"
 
 	ffclient "github.com/thomaspoignant/go-feature-flag"
-	"github.com/thomaspoignant/go-feature-flag/ffuser"
 )
 
 func main() {
@@ -20,10 +20,10 @@ func main() {
 	// Init ffclient with a file retriever.
 	err := ffclient.Init(ffclient.Config{
 		PollingInterval: 10 * time.Second,
-		Logger:          log.New(os.Stdout, "", 0),
+		LeveledLogger:   slog.Default(),
 		Context:         context.Background(),
 		Retriever: &fileretriever.Retriever{
-			Path: "examples/rollout_experimentation/flags.yaml",
+			Path: "examples/rollout_experimentation/flags.goff.yaml",
 		},
 		DataExporter: ffclient.DataExporter{
 			FlushInterval:    10,
@@ -41,8 +41,11 @@ func main() {
 	defer ffclient.Close()
 
 	// create users
-	user1 := ffuser.NewAnonymousUser("332460b9-a8aa-4f7a-bc5d-9cc33632df9a")
-	user2 := ffuser.NewAnonymousUser("91ff5618-6cbb-4f54-a038-3e99b078f560")
+	user1 := ffcontext.
+		NewEvaluationContextBuilder("aea2fdc1-b9a0-417a-b707-0c9083de68e3").
+		AddCustom("anonymous", true).
+		Build()
+	user2 := ffcontext.NewEvaluationContext("332460b9-a8aa-4f7a-bc5d-9cc33632df9a")
 	_, _ = ffclient.StringVariation("experimentation-flag", user1, "error")
 	_, _ = ffclient.StringVariation("experimentation-flag", user2, "error")
 
